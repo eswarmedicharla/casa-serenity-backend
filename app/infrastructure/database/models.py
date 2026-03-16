@@ -14,5 +14,6 @@ class UserModel(Base):
     profession = Column(String(100))
     date_of_birth = Column(Date)
     password = Column(String(255))
+    confirm_password = Column(String(255))   # added
     role = Column(String(50), default="USER")
     created_at = Column(DateTime, default=datetime.utcnow)

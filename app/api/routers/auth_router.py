@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.infrastructure.database.db import SessionLocal
@@ -11,9 +11,7 @@ router = APIRouter()
 
 
 def get_db():
-
     db = SessionLocal()
-
     try:
         yield db
     finally:
@@ -22,19 +20,23 @@ def get_db():
 
 @router.post("/register")
 def register(request: RegisterRequest, db: Session = Depends(get_db)):
+    try:
+        repo = UserRepository(db)
+        service = AuthService(repo)
 
-    repo = UserRepository(db)
+        return service.register_user(request.dict())
 
-    service = AuthService(repo)
-
-    return service.register_user(request.dict())
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/login")
 def login(request: LoginRequest, db: Session = Depends(get_db)):
+    try:
+        repo = UserRepository(db)
+        service = AuthService(repo)
 
-    repo = UserRepository(db)
+        return service.login(request.email, request.password)
 
-    service = AuthService(repo)
-
-    return service.login(request.email, request.password)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

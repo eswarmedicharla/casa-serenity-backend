@@ -19,9 +19,7 @@ class UserRepository:
         user = UserModel(**data)
 
         self.db.add(user)
-
         self.db.commit()
-
         self.db.refresh(user)
 
         return user
