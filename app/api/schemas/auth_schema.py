@@ -1,17 +1,18 @@
 from pydantic import BaseModel, EmailStr
 from datetime import date
+from app.domain.enums.roles import RoleEnum
 
 
 class RegisterRequest(BaseModel):
     name: str
     email: EmailStr
-    mobile_number: str
+    mobileNumber: str
     gender: str
     profession: str
-    role: str
-    date_of_birth: date
+    role: RoleEnum
+    dateOfBirth: date
     password: str
-    confirm_password: str
+    confirmPassword: str
 
 
 class LoginRequest(BaseModel):
