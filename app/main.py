@@ -3,18 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routers import auth_router  # Import the router module
 from app.infrastructure.database.db import engine, Base
 
-# Create tables (for development only)
-# In production, use Alembic migrations
-async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield
 
 app = FastAPI(
     title="Casa Serenity Backend",
     description="Real Estate Application API",
-    version="1.0.0",
-    lifespan=lifespan
+    version="1.0.0"
 )
 
 # CORS Middleware (Optional but recommended for frontend)

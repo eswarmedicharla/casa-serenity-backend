@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
-# Import the security module and the NEW dependency
 from app.core import security
 from app.core.security import get_current_active_user 
 
@@ -15,27 +14,28 @@ from app.api.schemas.auth_schema import RegisterRequest, LoginRequest
 router = APIRouter()
 
 @router.post("/register")
-async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db)):
+def register(request: RegisterRequest, db: Session = Depends(get_db)):
     user_repo = UserRepository(db)
-    # Note: TokenRepo not needed for registration
     service = AuthService(user_repo, None) 
-    return await service.register_user(request.dict())
+    return service.register_user(request.dict())
+
 
 @router.post("/login")
-async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
+def login(request: LoginRequest, db: Session = Depends(get_db)):
     user_repo = UserRepository(db)
     service = AuthService(user_repo, None)
-    return await service.login(request.email, request.password)
+    return service.login(request.email, request.password)
+
 
 @router.get("/profile")
-async def get_profile(
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_active_user) # Use the new dependency
+def get_profile(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_active_user)
 ):
     user_repo = UserRepository(db)
     user_id = current_user.get("user_id")
     
-    user = await user_repo.get_by_id(user_id)
+    user = user_repo.get_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -51,17 +51,17 @@ async def get_profile(
         "createdAt": user.createdAt
     }
 
+
 @router.post("/logout")
-async def logout(
+def logout(
     credentials: HTTPAuthorizationCredentials = Depends(security.security), 
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_active_user)
 ):
     token = credentials.credentials
     user_repo = UserRepository(db)
     token_repo = TokenRepository(db)
     
-    # Pass both repos to the service
     service = AuthService(user_repo, token_repo)
     
-    return await service.logout(token, current_user.get("user_id"))
+    return service.logout(token, current_user.get("user_id"))

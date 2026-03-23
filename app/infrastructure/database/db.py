@@ -1,5 +1,5 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
 import urllib
 
 # Connection parameters
@@ -10,31 +10,20 @@ params = urllib.parse.quote_plus(
     "Trusted_Connection=yes;"
 )
 
-#Note: You must install aioodbc (pip install aioodbc) for SQL Server async support. 
-#If you strictly must stick to pyodbc without aioodbc, 
-#true async DB calls aren't possible without running them in a thread pool, which defeats the purpose. The code below assumes mssql+aioodbc.
-# Note: We use mssql+pyodbc for sync, but for async with SQL Server, 
-# you typically need 'mssql+aioodbc' or 'mssql+asyncpg' (if postgres). 
-# Since you specified pyodbc, note that true async support for SQL Server via pyodbc is limited.
-# To make this work with 'async', we usually switch to 'aioodbc'. 
-# Assuming you have 'aioodbc' installed or will install it: 
-# pip install aioodbc
+DATABASE_URL = f"mssql+pyodbc:///?odbc_connect={params}"
 
-DATABASE_URL = f"mssql+aioodbc:///?odbc_connect={params}"
+# ✅ Sync Engine
+engine = create_engine(DATABASE_URL, echo=True, future=True)
 
-# Create Async Engine
-engine = create_async_engine(DATABASE_URL, echo=True, future=True)
-
-# Async Session Factory
-AsyncSessionLocal = async_sessionmaker(
-    bind=engine, 
-    class_=AsyncSession, 
-    expire_on_commit=False
-)
+# ✅ Sync Session
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 Base = declarative_base()
 
-# Dependency to get DB session
-async def get_db():
-    async with AsyncSessionLocal() as session:
-        yield session
+# ✅ Sync DB Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
