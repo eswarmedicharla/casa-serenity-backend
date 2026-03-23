@@ -3,7 +3,6 @@ uvicorn
 sqlalchemy
 pyodbc
 alembic
-aiodbc
 python-jose
 passlib[bcrypt]
 pydantic
