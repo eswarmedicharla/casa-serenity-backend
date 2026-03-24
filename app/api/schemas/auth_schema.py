@@ -6,13 +6,13 @@ from app.domain.enums.roles import RoleEnum
 class RegisterRequest(BaseModel):
     name: str
     email: EmailStr
-    mobileNumber: str
+    mobile_number: str
     gender: str
     profession: str
     role: RoleEnum
-    dateOfBirth: date
+    date_of_birth: date
     password: str
-    confirmPassword: str
+    confirm_password: str
 
 
 class LoginRequest(BaseModel):

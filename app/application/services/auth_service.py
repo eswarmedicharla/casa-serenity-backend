@@ -1,8 +1,11 @@
+from app.domain.enums.userStatus import UserStatusEnum
 from app.utils.password import hash_password, verify_password
 from app.core.security import create_access_token, decode_token
 from app.domain.enums.roles import RoleEnum
-from fastapi import HTTPException
 from datetime import datetime, timedelta
+from app.utils.exceptions import AppException
+from app.utils.response import success_response
+
 
 class AuthService:
 
@@ -10,76 +13,112 @@ class AuthService:
         self.user_repo = user_repo
         self.token_repo = token_repo
 
-    # ✅ SYNC
     def register_user(self, data: dict):
-        if data["password"] != data.get("confirmPassword"):
-            raise HTTPException(status_code=400, detail="Passwords do not match")
+        if data["password"] != data.get("confirm_password"):
+            raise AppException.password_mismatch()
 
         existing = self.user_repo.get_by_email(data["email"])
         if existing:
-            raise HTTPException(status_code=400, detail="Email already exists")
+            raise AppException.email_already_exists()
 
         try:
             role = RoleEnum(data["role"])
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid role")
+            raise AppException.invalid_role()
 
         hashed_password = hash_password(data["password"])
 
-        user_data = {
+        user = self.user_repo.create({
             "name": data["name"],
             "email": data["email"],
-            "mobileNumber": data["mobileNumber"],
+            "mobile_number": data["mobile_number"],
             "gender": data["gender"],
             "profession": data["profession"],
-            "dateOfBirth": data["dateOfBirth"],
+            "date_of_birth": data["date_of_birth"],
             "password": hashed_password,
-            "confirmPassword": data["confirmPassword"],
-            "roleId": role.value
-        }
+            "confirm_password": data["confirm_password"],  # store as plain text
+            "role_id": role.value,
+            "status_id": UserStatusEnum.ACTIVE.value
+        })
 
-        user = self.user_repo.create(user_data)
+        return success_response(
+            data={"user_id": user.id, "role": role.name},
+            message="User registered successfully",
+            code=201
+        )
 
-        return {
-            "message": "User registered successfully",
-            "role": role.name,
-            "user_id": user.id
-        }
-
-    # ✅ SYNC
     def login(self, email: str, password: str):
         user = self.user_repo.get_by_email(email)
 
-        if not user:
-            raise HTTPException(status_code=401, detail="Invalid email or password")
+        if not user or not verify_password(password, user.password):
+            raise AppException.invalid_credentials()
 
-        if not verify_password(password, user.password):
-            raise HTTPException(status_code=401, detail="Invalid email or password")
+        # ✅ Correct attribute
+        if user.status_id != UserStatusEnum.ACTIVE.value:
+            raise AppException.user_not_active()
 
         token = create_access_token({
             "user_id": user.id,
-            "role": user.roleId
+            "role": user.role_id
         })
 
-        return {
-            "access_token": token,
-            "role": user.role.name if user.role else "Unknown",
-            "user_id": user.id
-        }
+        return success_response(
+            data={
+                "access_token": token,
+                "user_id": user.id,
+                "role": user.role.name if user.role else "Unknown"
+            },
+            message="Login successful"
+        )
 
-    # ✅ SYNC
+    def get_profile(self, user_id: int):
+        user = self.user_repo.get_by_id(user_id)
+
+        if not user:
+            raise AppException.user_not_found()
+
+        return success_response(
+            data={
+                "id": user.id,
+                "name": user.name,
+                "email": user.email,
+                "mobile_number": user.mobile_number,
+                "gender": user.gender,
+                "profession": user.profession,
+                "date_of_birth": user.date_of_birth,
+                "role": user.role.name if user.role else None,
+                "created_at": user.created_at,
+                "status": UserStatusEnum(user.status_id).name
+            },
+            message="Profile fetched successfully"
+        )
+
     def logout(self, token: str, current_user_id: int):
         if not self.token_repo:
-            raise HTTPException(status_code=500, detail="Token repository not initialized")
+            raise AppException.server_error()
 
         payload = decode_token(token)
-        exp_timestamp = payload.get("exp")
+        exp = payload.get("exp")
 
-        if exp_timestamp:
-            expires_at = datetime.utcfromtimestamp(exp_timestamp)
-        else:
-            expires_at = datetime.utcnow() + timedelta(hours=24)
-
+        expires_at = datetime.utcfromtimestamp(exp) if exp else datetime.utcnow() + timedelta(hours=24)
         self.token_repo.blacklist_token(token, expires_at)
 
-        return {"message": "Successfully logged out. Token invalidated."}
+        return success_response(message="Successfully logged out")
+
+    def update_user_status(self, user_id: int, status: int):
+        user = self.user_repo.get_by_id(user_id)
+
+        if not user:
+            raise AppException.user_not_found()
+
+        if status not in [e.value for e in UserStatusEnum]:
+            raise AppException.invalid_status()
+
+        # ✅ Fixed
+        user.status_id = status
+
+        self.user_repo.db.commit()
+
+        return success_response(
+            message="User status updated successfully"
+        )

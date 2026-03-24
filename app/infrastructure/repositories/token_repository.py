@@ -1,9 +1,10 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import insert
-from app.infrastructure.database.models import TokenBlacklist
 from datetime import datetime
+from app.infrastructure.database.models import TokenBlacklist
 
 class TokenRepository:
+
     def __init__(self, db: Session):
         self.db = db
 
@@ -14,4 +15,4 @@ class TokenRepository:
             created_at=datetime.utcnow()
         )
         self.db.execute(stmt)
-        self.db.commit()   # 🔥 VERY IMPORTANT
+        self.db.commit()

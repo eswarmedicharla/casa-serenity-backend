@@ -1,8 +1,8 @@
 """initial
 
-Revision ID: 00034eb2dd01
+Revision ID: ba2735aa26f2
 Revises: 
-Create Date: 2026-03-17 12:59:52.685769
+Create Date: 2026-03-24 17:53:30.501344
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '00034eb2dd01'
+revision: str = 'ba2735aa26f2'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -27,28 +27,35 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
     )
-    op.create_table('tokenBlacklist',
+    op.create_table('status',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('name', sa.String(length=50), nullable=False),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('name')
+    )
+    op.create_table('token_blacklist',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('token', sa.String(length=500), nullable=False),
-    sa.Column('expiresAt', sa.DateTime(), nullable=False),
-    sa.Column('createdAt', sa.DateTime(), nullable=True),
+    sa.Column('expires_at', sa.DateTime(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_tokenBlacklist_id'), 'tokenBlacklist', ['id'], unique=False)
-    op.create_index(op.f('ix_tokenBlacklist_token'), 'tokenBlacklist', ['token'], unique=True)
+    op.create_index(op.f('ix_token_blacklist_id'), 'token_blacklist', ['id'], unique=False)
+    op.create_index(op.f('ix_token_blacklist_token'), 'token_blacklist', ['token'], unique=True)
     op.create_table('users',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=150), nullable=False),
-    sa.Column('email', sa.String(length=150), nullable=True),
-    sa.Column('mobileNumber', sa.String(length=20), nullable=True),
+    sa.Column('email', sa.String(length=150), nullable=False),
+    sa.Column('mobile_number', sa.String(length=20), nullable=True),
     sa.Column('gender', sa.String(length=10), nullable=True),
     sa.Column('profession', sa.String(length=100), nullable=True),
-    sa.Column('dateOfBirth', sa.Date(), nullable=True),
-    sa.Column('password', sa.String(length=255), nullable=True),
-    sa.Column('confirmPassword', sa.String(length=255), nullable=True),
-    sa.Column('roleId', sa.Integer(), nullable=True),
-    sa.Column('createdAt', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['roleId'], ['roles.id'], ),
+    sa.Column('date_of_birth', sa.Date(), nullable=True),
+    sa.Column('password', sa.String(length=255), nullable=False),
+    sa.Column('role_id', sa.Integer(), nullable=False),
+    sa.Column('status_id', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['role_id'], ['roles.id'], ),
+    sa.ForeignKeyConstraint(['status_id'], ['status.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
@@ -62,8 +69,9 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_users_id'), table_name='users')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
-    op.drop_index(op.f('ix_tokenBlacklist_token'), table_name='tokenBlacklist')
-    op.drop_index(op.f('ix_tokenBlacklist_id'), table_name='tokenBlacklist')
-    op.drop_table('tokenBlacklist')
+    op.drop_index(op.f('ix_token_blacklist_token'), table_name='token_blacklist')
+    op.drop_index(op.f('ix_token_blacklist_id'), table_name='token_blacklist')
+    op.drop_table('token_blacklist')
+    op.drop_table('status')
     op.drop_table('roles')
     # ### end Alembic commands ###
